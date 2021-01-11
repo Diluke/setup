@@ -1,23 +1,18 @@
-# Setup script for Redash with Docker on Ubuntu 18.04.
+# Setup script for Redash with Docker on PhotonOS 3.0 Revision 3.
 
-This is a reference setup for Redash on a single Ubuntu 18.04 server, which uses Docker and Docker Compose for deployment and management.
-
-This is the same setup we use for our official images (for AWS & Google Cloud) and can be used as reference if you want to manually setup Redash in a different environment (different OS or different deployment location).
+This is a fork setup script for Redash on a single PhotonOS machine, which uses Docker and Docker Compose for deployment and management.
 
 * `setup.sh` is the script that installs everything and creates the directories.
-* `docker-compose.yml` is the Docker Compose setup we use.
-* `packer.json` is Packer configuration we use to create the Cloud images.
+* `docker-compose.yml` is the Docker Compose setup file.
 
 ## FAQ
 
-### Can I use this in production?
+### How do You upgrade to newer versions of Redash?
 
-For small scale deployments -- yes. But for larger deployments we recommend at least splitting the database (and probably Redis) into its own server (preferably a managed service like RDS) and setting up at least 2 servers for Redash for redundancy. You will also need to tweak the number of workers based on your usage patterns.
+First step is to see [Upgrade Guide] at (https://redash.io/help/open-source/admin-guide/how-to-upgrade).
 
-### How do I upgrade to newer versions of Redash?
+### How do You use `setup.sh` on a different operating system?
 
-See [Upgrade Guide](https://redash.io/help/open-source/admin-guide/how-to-upgrade).
-
-### How do I use `setup.sh` on a different operating system?
-
-You will need to update the `install_docker` function and maybe other functions as well.
+You adapt, or search for what you need.
+I bet you there is alot of forks for other systems, This one is actualy from Ubuntu 18.04.
+Basicaly you can take docker-compose.yml and spin up your own container just about anywhere.
