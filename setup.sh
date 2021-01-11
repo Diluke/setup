@@ -1,31 +1,38 @@
 #!/usr/bin/env bash
-# This script setups dockerized Redash on Ubuntu 18.04.
+
+# This script setups dockerized Redash on PhotonOS 3.0.
+#
+# Great tips to prepare PhotonOS:
+#  https://neonmirrors.net/post/2020-10/deploying-harbor-on-photon-os/
+#
+
 set -eu
 
 REDASH_BASE_PATH=/opt/redash
 
 install_docker(){
+
     # Install Docker
-    export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get -qqy update
-    DEBIAN_FRONTEND=noninteractive sudo -E apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade 
-    sudo apt-get -yy install apt-transport-https ca-certificates curl software-properties-common wget pwgen
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    sudo apt-get update && sudo apt-get -y install docker-ce
+    tndf install ndutils docker-ce -y
 
     # Install Docker Compose
-    sudo curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+    curl -sL "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
 
-    # Allow current user to run Docker commands
-    sudo usermod -aG docker $USER
+i
+}
+
+enable_docker(){
+
+   # Enable docker
+   systemctl enable docker
+   systemctl start docker
+
 }
 
 create_directories() {
     if [[ ! -e $REDASH_BASE_PATH ]]; then
-        sudo mkdir -p $REDASH_BASE_PATH
-        sudo chown $USER:$USER $REDASH_BASE_PATH
+        mkdir -p $REDASH_BASE_PATH
+        chown $USER:$USER $REDASH_BASE_PATH
     fi
 
     if [[ ! -e $REDASH_BASE_PATH/postgres-data ]]; then
@@ -39,10 +46,10 @@ create_config() {
         touch $REDASH_BASE_PATH/env
     fi
 
-    COOKIE_SECRET=$(pwgen -1s 32)
-    SECRET_KEY=$(pwgen -1s 32)
-    POSTGRES_PASSWORD=$(pwgen -1s 32)
-    REDASH_DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgres/postgres"
+    export COOKIE_SECRET=$(openssl rand -base64 32)
+    export SECRET_KEY=$(openssl rand -base64 32)
+    export POSTGRES_PASSWORD=$(openssl rand -base64 32)
+    export REDASH_DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgres/postgres"
 
     echo "PYTHONUNBUFFERED=0" >> $REDASH_BASE_PATH/env
     echo "REDASH_LOG_LEVEL=INFO" >> $REDASH_BASE_PATH/env
@@ -55,11 +62,11 @@ create_config() {
 
 setup_compose() {
     REQUESTED_CHANNEL=stable
-    LATEST_VERSION=`curl -s "https://version.redash.io/api/releases?channel=$REQUESTED_CHANNEL"  | json_pp  | grep "docker_image" | head -n 1 | awk 'BEGIN{FS=":"}{print $3}' | awk 'BEGIN{FS="\""}{print $1}'`
+    LATEST_VERSION=`curl -s "https://version.redash.io/api/releases?channel=$REQUESTED_CHANNEL" | grep "docker_image" | head -n 1 | awk 'BEGIN{FS=":"}{print $3}' | awk 'BEGIN{FS="\""}{print $0}' | cut -d '"' -f2`
 
     cd $REDASH_BASE_PATH
-    GIT_BRANCH="${REDASH_BRANCH:-master}" # Default branch/version to master if not specified in REDASH_BRANCH env var
-    wget https://raw.githubusercontent.com/getredash/setup/${GIT_BRANCH}/data/docker-compose.yml
+    export GIT_BRANCH="${REDASH_BRANCH:-master}" # Default branch/version to master if not specified in REDASH_BRANCH env var
+    wget https://raw.githubusercontent.com/diluke/setup/${GIT_BRANCH}/data/docker-compose.yml
     sed -ri "s/image: redash\/redash:([A-Za-z0-9.-]*)/image: redash\/redash:$LATEST_VERSION/" docker-compose.yml
     echo "export COMPOSE_PROJECT_NAME=redash" >> ~/.profile
     echo "export COMPOSE_FILE=/opt/redash/docker-compose.yml" >> ~/.profile
@@ -70,6 +77,7 @@ setup_compose() {
 }
 
 install_docker
+enable_docker
 create_directories
 create_config
 setup_compose
